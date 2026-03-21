@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -15,12 +16,12 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-                js(IR) { // ここが js(IR) または wasmJs() になっている必要があります
-                    browser {
-                        commonWebpackConfig {
-                            cssSupport { enabled = true }
-                        }
-                    }
+    js(IR) {
+        browser {
+            commonWebpackConfig {
+                cssSupport { enabled = true }
+            }
+        }
         binaries.executable()
     }
     
@@ -31,10 +32,6 @@ kotlin {
     }
     
     sourceSets {
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.activity.compose)
-        }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -45,6 +42,25 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.postgrest.kt) // Supabase
+            implementation(libs.ktor.client.core)
+            implementation(libs.kotlinx.serialization.json)
+            // フォントのウェイト操作などに便利なユーティリティ
+            implementation(libs.compose.ui.util)
+        }
+        androidMain.dependencies {
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.ktor.client.okhttp)
+        }
+        val jsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+            }
+        }
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+            }
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -81,5 +97,6 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+    // Supabase BOM
+    implementation(platform(libs.supabase.bom))
 }
-
