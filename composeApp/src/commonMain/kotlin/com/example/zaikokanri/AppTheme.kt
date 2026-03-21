@@ -13,13 +13,12 @@ import zaikokanri.composeapp.generated.resources.noto_sans_jp_regular
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
-    // 1. リソースからフォントを生成（ここが自動生成された Res であることを確認）
+    // リソースからフォントを生成
     val fontFamily = FontFamily(
         Font(resource = Res.font.noto_sans_jp_regular, weight = FontWeight.Normal)
     )
     val defaultStyle = TextStyle(fontFamily = fontFamily)
 
-    // 2. Typographyに適用
     val typography = Typography(
         bodyLarge = defaultStyle,
         bodyMedium = defaultStyle,

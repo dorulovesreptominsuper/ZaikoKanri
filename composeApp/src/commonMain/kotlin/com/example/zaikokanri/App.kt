@@ -30,16 +30,13 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
-import org.jetbrains.compose.resources.painterResource
-
 import zaikokanri.composeapp.generated.resources.Res
-import zaikokanri.composeapp.generated.resources.compose_multiplatform
 import zaikokanri.composeapp.generated.resources.noto_sans_jp_regular
-import kotlin.collections.emptyList
 
 @Composable
 @Preview
 fun App() {
+    val fontFamily = FontFamily(Font(Res.font.noto_sans_jp_regular))
     val scope = rememberCoroutineScope()
     val supabase = createSupabaseClient(
         supabaseUrl = "https://lkkgahmqzbcfirgdsvgb.supabase.co",
@@ -51,73 +48,68 @@ fun App() {
 
     var stockList by remember { mutableStateOf<List<ItemStockWithCategory>?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isAdmin by remember { mutableStateOf(false) }
+
 
 
     LaunchedEffect(Unit) {
-
+        supabase.auth.signOut()
         signIn(
             supabase = supabase,
             emailInput = "flatsyokudou@test.com",
             passwordInput = "zaikokakunin",
-            onSuccess =
-                {
-                    scope.launch {
-//                try {
-
-//            val result = supabase.from("item_stocks")
-//                .select().apply {
-//                    println(this.data)
-//                }
-//                .decodeList<ItemStock>()
-
-                        stockList = fetchStocksWithCategory(supabase)
-
-//        } catch (e: Exception) {
-//            // ここでエラーが出る場合、RLSポリシーかURL/Keyのミスです
-//            println("エラー発生: ${e.message}")
-//            e.printStackTrace()
-//        }
-                    }
-                })
+            onSuccess = {
+                scope.launch { stockList = fetchStocksWithCategory(supabase) }
+            }
+        )
     }
-    val fontFamily = FontFamily(Font(Res.font.noto_sans_jp_regular))
 
-    // MaterialThemeより外側、あるいは直下で LocalTextStyle を強制的に書き換える
     CompositionLocalProvider(
         LocalTextStyle provides TextStyle(fontFamily = fontFamily)
     ) {
-    AppTheme {
+        AppTheme {
+            when {
+                errorMessage != null -> Text("エラー: $errorMessage")
+                stockList == null -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
 
-        when {
-            errorMessage != null -> Text("エラー: $errorMessage")
-            stockList == null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){ CircularProgressIndicator()}
-            else -> InventoryListScreen(stockList!!)
+                else -> InventoryListScreen(
+                    stocks = stockList!!,
+                    isAdmin = isAdmin,
+                    onPasswordConfirmed = {
+                        supabase.auth.signOut()
+                        signIn(
+                            supabase, "flatsyokudou@dev.com", it,
+                            onSuccess = {
+                                isAdmin = true
+                                scope.launch { stockList = fetchStocksWithCategory(supabase) }
+                            },
+                            onError = {
+                                scope.launch {
+                                    signIn(
+                                        supabase = supabase,
+                                        emailInput = "flatsyokudou@test.com",
+                                        passwordInput = "zaikokakunin",
+                                        onSuccess = {
+                                            scope.launch {
+                                                stockList = fetchStocksWithCategory(supabase)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        )
+                    },
+                    onSaveAsAdmin = {
+
+                    }
+                )
+            }
         }
-
-//        var showContent by remember { mutableStateOf(false) }
-//        Column(
-//            modifier = Modifier
-//                .background(MaterialTheme.colorScheme.primaryContainer)
-//                .safeContentPadding()
-//                .fillMaxSize(),
-//            horizontalAlignment = Alignment.CenterHorizontally,
-//        ) {
-//            Button(onClick = { showContent = !showContent }) {
-//                Text("Click me!")
-//            }
-//            AnimatedVisibility(showContent) {
-//                val greeting = remember { Greeting().greet() }
-//                Column(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalAlignment = Alignment.CenterHorizontally,
-//                ) {
-//                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-//                    Text("Compose: $greeting")
-//                }
-//            }
-//        }
     }
-}}
+}
 
 suspend fun signIn(
     supabase: SupabaseClient, emailInput: String, passwordInput: String,
@@ -144,10 +136,15 @@ suspend fun updateStock(
     supabase: SupabaseClient,
     stockId: String,
     newQuantity: Int,
-    location: String?
+    updatedStockList: List<ItemStockWithCategory>,
 ) {
     val currentUserId = supabase.auth.currentUserOrNull()?.id ?: return
 
+    updatedStockList.forEach {
+        supabase.from("item_stocks").upsert(
+            values = updatedStockList
+        )
+    }
     supabase.from("item_stocks").update(
         {
             set("quantity", newQuantity)

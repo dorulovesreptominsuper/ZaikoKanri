@@ -46,6 +46,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             // フォントのウェイト操作などに便利なユーティリティ
             implementation(libs.compose.ui.util)
+            implementation(libs.material.icons.extended)
         }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
